@@ -553,11 +553,11 @@
 
   <!-- Copy all metadata from merge.ref.content to a single node-set -->
   <xsl:variable name="merge.ref.metadata">
-    <xsl:copy-of select="exsl:node-set($merge.ref.content)//d:info[1]/@*"/>
-    <xsl:copy-of select="exsl:node-set($merge.ref.content)//d:title[1]"/>
-    <xsl:copy-of select="exsl:node-set($merge.ref.content)//d:titleabbrev[1]"/>
-    <xsl:copy-of select="exsl:node-set($merge.ref.content)//d:subtitle[1]"/>
-    <xsl:copy-of select="exsl:node-set($merge.ref.content)//d:info[1]/node()"/>
+    <xsl:copy-of select="exsl:node-set($merge.ref.content)/*/d:info[1]/@*"/>
+    <xsl:copy-of select="exsl:node-set($merge.ref.content)/*/d:title[1]"/>
+    <xsl:copy-of select="exsl:node-set($merge.ref.content)/*/d:titleabbrev[1]"/>
+    <xsl:copy-of select="exsl:node-set($merge.ref.content)/*/d:subtitle[1]"/>
+    <xsl:copy-of select="exsl:node-set($merge.ref.content)/*/d:info[1]/node()"/>
   </xsl:variable>
 
   <xsl:variable name="merge.ref.info"

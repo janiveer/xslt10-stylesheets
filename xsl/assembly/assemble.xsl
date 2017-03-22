@@ -5,8 +5,11 @@
   xmlns:exsl="http://exslt.org/common"
   xmlns:xlink="http://www.w3.org/1999/xlink"
   xmlns="http://docbook.org/ns/docbook"
-  exclude-result-prefixes="exsl d xlink d"
+                xmlns:saxon="http://icl.com/saxon"
+  exclude-result-prefixes="exsl d xlink d saxon"
   version="1.0">
+
+<xsl:import href="http://cdn.docbook.org/release/xsl/current/lib/lib.xsl"/>
 
 <xsl:preserve-space elements="*"/>
 <xsl:strip-space elements="d:assembly d:structure d:module d:resources d:resource"/>
@@ -359,13 +362,15 @@
 
   <xsl:variable name="fileref">
     <xsl:choose>
-      <xsl:when test="$resource/ancestor::d:resources/@xml:base">
-        <xsl:value-of
-            select="concat($resource/ancestor::d:resources[@xml:base][1]/@xml:base,
-                                 '/', $filename)"/>
+      <xsl:when test="contains($filename, ':')">
+        <!-- it has a uri scheme so it is an absolute uri -->
+        <xsl:value-of select="$filename"/>
       </xsl:when>
       <xsl:otherwise>
-        <xsl:value-of select="$filename"/>
+        <!-- it's a relative uri -->
+        <xsl:call-template name="relative-uri">
+          <xsl:with-param name="filename" select="$href.att" />
+        </xsl:call-template>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:variable>
@@ -373,6 +378,7 @@
   <xsl:choose>
     <xsl:when test="string-length($fileref) = 0">
       <!-- A resource without @fileref gets its content copied -->
+      <!-- TODO: shouldn't copy description element! -->
       <xsl:apply-templates select="$resource/node()" mode="copycontent"/>
     </xsl:when>
     <xsl:otherwise>
@@ -424,7 +430,7 @@
           <!-- must use for-each to set context node for xsl:copy -->
           <xsl:for-each select="$ref.content">
             <xsl:copy>
-              <xsl:copy-of select="@*[not(name() = 'xml:id')]"/>
+              <xsl:copy-of select="@*[not(name() = 'xml:id')][not(name() = 'xml:base')]"/>
               <xsl:choose>
                 <!-- Use the module's xml:id if it has one -->
                 <xsl:when test="$module/@xml:id">
@@ -437,6 +443,21 @@
                   <xsl:copy-of select="@xml:id"/>
                 </xsl:otherwise>
               </xsl:choose>
+
+              <xsl:attribute name="xml:base">
+                <xsl:choose>
+                  <!-- Use the module's xml:base if it has one -->
+                  <xsl:when test="$module/@xml:base">
+                    <xsl:call-template name="relative-uri">
+                      <xsl:with-param name="filename" select="@xml:base" />
+                    </xsl:call-template>
+                  </xsl:when>
+                  <!-- otherwise use the resource's fileref -->
+                  <xsl:otherwise>
+                    <xsl:value-of select="$fileref"/>
+                  </xsl:otherwise>
+                </xsl:choose>
+              </xsl:attribute>
 
               <xsl:call-template name="merge.info">
                 <xsl:with-param name="merge.element" select="$module/d:merge"/>
@@ -460,7 +481,7 @@
         <xsl:otherwise>
           <!-- create the element instead of copying it -->
           <xsl:element name="{$element.name}" namespace="http://docbook.org/ns/docbook">
-            <xsl:copy-of select="$ref.content/@*[not(name() = 'xml:id')]"/>
+            <xsl:copy-of select="$ref.content/@*[not(name() = 'xml:id')][not(name() = 'xml:base')]"/>
             <xsl:choose>
               <!-- Use the module's xml:id if it has one -->
               <xsl:when test="@xml:id">
@@ -475,6 +496,21 @@
                 </xsl:attribute>
               </xsl:when>
             </xsl:choose>
+
+            <xsl:attribute name="xml:base">
+              <xsl:choose>
+                <!-- Use the module's xml:base if it has one -->
+                <xsl:when test="@xml:base">
+                  <xsl:call-template name="relative-uri">
+                    <xsl:with-param name="filename" select="@xml:base" />
+                  </xsl:call-template>
+                </xsl:when>
+                <!-- otherwise use the resource's fileref -->
+                <xsl:otherwise>
+                  <xsl:value-of select="$fileref"/>
+                </xsl:otherwise>
+              </xsl:choose>
+            </xsl:attribute>
 
             <xsl:call-template name="merge.info">
               <xsl:with-param name="merge.element" select="d:merge"/>
@@ -506,11 +542,10 @@
 
   <!-- a merge element may use resourceref as well as literal content -->
   <!-- any literal content overrides the merge resourceref content -->
-  <xsl:variable name="merge.ref.content">
-    <xsl:if test="$merge.element/@resourceref">
       <xsl:variable name="resourceref" select="$merge.element/@resourceref"/>
       <xsl:variable name="resource" select="key('id', $resourceref)"/>
 
+    <xsl:if test="$resourceref">
       <xsl:choose>
         <xsl:when test="not($resource)">
           <xsl:message terminate="yes">
@@ -527,26 +562,29 @@
           </xsl:message>
         </xsl:when>
       </xsl:choose>
+    </xsl:if>
 
       <xsl:variable name="href.att" select="$resource/@fileref | $resource/@href"/>
 
       <xsl:variable name="fileref">
         <xsl:choose>
-          <xsl:when test="$resource/ancestor::d:resources/@xml:base">
-            <xsl:value-of
-                select="concat($resource/ancestor::d:resources[@xml:base][1]/@xml:base,
-                               '/', $href.att)"/>
+          <xsl:when test="contains($href.att, ':')">
+            <!-- it has a uri scheme so it is an absolute uri -->
+            <xsl:value-of select="$href.att"/>
           </xsl:when>
           <xsl:otherwise>
-            <xsl:value-of select="$href.att"/>
+            <!-- it's a relative uri -->
+            <xsl:call-template name="relative-uri">
+              <xsl:with-param name="filename" select="$href.att" />
+            </xsl:call-template>
           </xsl:otherwise>
         </xsl:choose>
       </xsl:variable>
 
+  <xsl:variable name="merge.ref.content">
       <xsl:if test="string-length($fileref) != 0">
         <xsl:copy-of select="document($fileref,/)"/>
       </xsl:if>
-    </xsl:if>
   </xsl:variable>
 
   <!-- Copy all metadata from merge.ref.content to a single node-set -->
@@ -617,7 +655,22 @@
           </xsl:when>
           <xsl:otherwise>
             <!-- copy through -->
-            <xsl:copy-of select="."/>
+            <xsl:copy>
+              <xsl:copy-of select="@*"/>
+                <xsl:attribute name="xml:base">
+                  <xsl:choose>
+                    <!-- Use the element's xml:base if it has one -->
+                    <xsl:when test="@xml:base">
+                      <xsl:value-of select="@xml:base"/>
+                    </xsl:when>
+                    <!-- otherwise use the merge resource's fileref -->
+                    <xsl:otherwise>
+                      <xsl:value-of select="$fileref"/>
+                    </xsl:otherwise>
+                  </xsl:choose>
+                </xsl:attribute>
+              <xsl:copy-of select="*|text()|processing-instruction()|comment()"/>
+            </xsl:copy>
           </xsl:otherwise>
         </xsl:choose>
       </xsl:for-each>
@@ -646,6 +699,108 @@
       </xsl:for-each>
 
     </info>
+  </xsl:if>
+</xsl:template>
+
+<xsl:template name="relative-uri">
+  <xsl:param name="filename" select="."/>
+  <xsl:param name="destdir" select="''"/>
+
+  <xsl:variable name="srcurl">
+    <xsl:call-template name="strippath">
+      <xsl:with-param name="filename">
+        <xsl:call-template name="xml.base.dirs">
+          <xsl:with-param name="base.elem"
+                          select="$filename/ancestor-or-self::*
+                                   [@xml:base != ''][1]"/>
+        </xsl:call-template>
+        <xsl:value-of select="$filename"/>
+      </xsl:with-param>
+    </xsl:call-template>
+  </xsl:variable>
+
+  <xsl:variable name="srcurl.trimmed">
+    <xsl:call-template name="trim.common.uri.paths"><!-- in lib.xsl -->
+      <xsl:with-param name="uriA" select="$srcurl"/>
+      <xsl:with-param name="uriB" select="$destdir"/>
+      <xsl:with-param name="return" select="'A'"/>
+    </xsl:call-template>
+  </xsl:variable>
+
+  <xsl:variable name="destdir.trimmed">
+    <xsl:call-template name="trim.common.uri.paths"><!-- in lib.xsl -->
+      <xsl:with-param name="uriA" select="$srcurl"/>
+      <xsl:with-param name="uriB" select="$destdir"/>
+      <xsl:with-param name="return" select="'B'"/>
+    </xsl:call-template>
+  </xsl:variable>
+
+  <xsl:variable name="depth">
+    <xsl:call-template name="count.uri.path.depth"><!-- in lib.xsl -->
+      <xsl:with-param name="filename" select="$destdir.trimmed"/>
+    </xsl:call-template>
+  </xsl:variable>
+
+  <xsl:call-template name="copy-string"><!-- in lib.xsl -->
+    <xsl:with-param name="string" select="'../'"/>
+    <xsl:with-param name="count" select="$depth"/>
+  </xsl:call-template>
+  <xsl:value-of select="$srcurl.trimmed"/>
+
+</xsl:template>
+
+<xsl:template name="strippath">
+  <xsl:param name="filename" select="''"/>
+  <xsl:choose>
+    <!-- Leading .. are not eliminated -->
+    <xsl:when test="starts-with($filename, '../')">
+      <xsl:value-of select="'../'"/>
+      <xsl:call-template name="strippath">
+        <xsl:with-param name="filename" select="substring-after($filename, '../')"/>
+      </xsl:call-template>
+    </xsl:when>
+    <xsl:when test="contains($filename, '/../')">
+      <xsl:call-template name="strippath">
+        <xsl:with-param name="filename">
+          <xsl:call-template name="getdir">
+            <xsl:with-param name="filename" select="substring-before($filename, '/../')"/>
+          </xsl:call-template>
+          <xsl:value-of select="substring-after($filename, '/../')"/>
+        </xsl:with-param>
+      </xsl:call-template>
+    </xsl:when>
+    <xsl:otherwise>
+      <xsl:value-of select="$filename"/>
+    </xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
+<xsl:template name="xml.base.dirs">
+  <xsl:param name="base.elem" select="NONODE"/>
+
+  <!-- Recursively resolve xml:base attributes, up to a
+       full path with : in uri -->
+  <xsl:if test="$base.elem/ancestor::*[@xml:base != ''] and
+                not(contains($base.elem/@xml:base, ':'))">
+    <xsl:call-template name="xml.base.dirs">
+      <xsl:with-param name="base.elem"
+                      select="$base.elem/ancestor::*[@xml:base != ''][1]"/>
+    </xsl:call-template>
+  </xsl:if>
+  <xsl:call-template name="getdir">
+    <xsl:with-param name="filename" select="$base.elem/@xml:base"/>
+  </xsl:call-template>
+
+</xsl:template>
+
+<xsl:template name="getdir">
+  <xsl:param name="filename" select="''"/>
+  <xsl:if test="contains($filename, '/')">
+    <xsl:value-of select="substring-before($filename, '/')"/>
+    <xsl:text>/</xsl:text>
+    <xsl:call-template name="getdir">
+      <xsl:with-param name="filename" select="substring-after($filename, '/')"/>
+    </xsl:call-template>
   </xsl:if>
 </xsl:template>
 

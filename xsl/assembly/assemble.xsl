@@ -9,8 +9,6 @@
   exclude-result-prefixes="exsl d xlink d saxon"
   version="1.0">
 
-<xsl:import href="http://cdn.docbook.org/release/xsl/current/lib/lib.xsl"/>
-
 <xsl:preserve-space elements="*"/>
 <xsl:strip-space elements="d:assembly d:structure d:module d:resources d:resource"/>
 
@@ -351,26 +349,26 @@
 
   <xsl:variable name="filename">
     <xsl:choose>
-      <xsl:when test="string-length($fragment.id) != 0">
-        <xsl:value-of select="substring-before($href.att, '#')"/>
-      </xsl:when>
-      <xsl:otherwise>
-        <xsl:value-of select="$href.att"/>
-      </xsl:otherwise>
-    </xsl:choose>
-  </xsl:variable>
-
-  <xsl:variable name="fileref">
-    <xsl:choose>
-      <xsl:when test="contains($filename, ':')">
+      <xsl:when test="contains($href.att, ':')">
         <!-- it has a uri scheme so it is an absolute uri -->
-        <xsl:value-of select="$filename"/>
+        <xsl:value-of select="$href.att"/>
       </xsl:when>
       <xsl:otherwise>
         <!-- it's a relative uri -->
         <xsl:call-template name="relative-uri">
           <xsl:with-param name="filename" select="$href.att" />
         </xsl:call-template>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:variable>
+
+  <xsl:variable name="fileref">
+    <xsl:choose>
+      <xsl:when test="string-length($fragment.id) != 0">
+        <xsl:value-of select="substring-before($filename, '#')"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="$filename"/>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:variable>
@@ -704,7 +702,6 @@
 
 <xsl:template name="relative-uri">
   <xsl:param name="filename" select="."/>
-  <xsl:param name="destdir" select="''"/>
 
   <xsl:variable name="srcurl">
     <xsl:call-template name="strippath">
@@ -719,33 +716,11 @@
     </xsl:call-template>
   </xsl:variable>
 
-  <xsl:variable name="srcurl.trimmed">
-    <xsl:call-template name="trim.common.uri.paths"><!-- in lib.xsl -->
-      <xsl:with-param name="uriA" select="$srcurl"/>
-      <xsl:with-param name="uriB" select="$destdir"/>
-      <xsl:with-param name="return" select="'A'"/>
-    </xsl:call-template>
-  </xsl:variable>
+  <xsl:value-of select="$srcurl"/>
 
-  <xsl:variable name="destdir.trimmed">
-    <xsl:call-template name="trim.common.uri.paths"><!-- in lib.xsl -->
-      <xsl:with-param name="uriA" select="$srcurl"/>
-      <xsl:with-param name="uriB" select="$destdir"/>
-      <xsl:with-param name="return" select="'B'"/>
-    </xsl:call-template>
-  </xsl:variable>
-
-  <xsl:variable name="depth">
-    <xsl:call-template name="count.uri.path.depth"><!-- in lib.xsl -->
-      <xsl:with-param name="filename" select="$destdir.trimmed"/>
-    </xsl:call-template>
-  </xsl:variable>
-
-  <xsl:call-template name="copy-string"><!-- in lib.xsl -->
-    <xsl:with-param name="string" select="'../'"/>
-    <xsl:with-param name="count" select="$depth"/>
-  </xsl:call-template>
-  <xsl:value-of select="$srcurl.trimmed"/>
+<!-- trim.common.uri.paths in lib.xsl -->
+<!-- count.uri.path.depth in lib.xsl -->
+<!-- copy-string in lib.xsl -->
 
 </xsl:template>
 

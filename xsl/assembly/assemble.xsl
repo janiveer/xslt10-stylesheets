@@ -6,7 +6,8 @@
   xmlns:xlink="http://www.w3.org/1999/xlink"
   xmlns="http://docbook.org/ns/docbook"
                 xmlns:saxon="http://icl.com/saxon"
-  exclude-result-prefixes="exsl d xlink d saxon"
+                xmlns:NodeInfo="http://org.apache.xalan.lib.NodeInfo"
+  exclude-result-prefixes="exsl d xlink NodeInfo saxon"
   version="1.0">
 
 <xsl:preserve-space elements="*"/>

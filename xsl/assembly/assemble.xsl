@@ -123,7 +123,11 @@
     <xsl:attribute name="version">
       <xsl:value-of select="$docbook.version"/>
     </xsl:attribute>
-    <xsl:copy-of select="@xml:id"/>
+    <!-- copy common attributes from structure to output -->
+    <xsl:copy-of select="@*[not(name() = 'defaultformat') and
+                            not(name() = 'renderas') and
+                            not(name() = 'resourceref') and
+                            not(name() = 'type')]"/>
 
     <!-- use the merge element if present -->
     <xsl:call-template name="merge.info">
@@ -158,14 +162,12 @@
   </xsl:variable>
 
   <xsl:element name="{$element.name}" namespace="http://docbook.org/ns/docbook">
-    <xsl:choose>
-      <!-- Use the module's xml:id if it has one -->
-      <xsl:when test="@xml:id">
-        <xsl:attribute name="xml:id">
-          <xsl:value-of select="@xml:id"/>
-        </xsl:attribute>
-      </xsl:when>
-    </xsl:choose>
+    <!-- copy common attributes from module to output -->
+    <xsl:copy-of select="@*[not(name() = 'chunk') and
+                            not(name() = 'contentonly') and
+                            not(name() = 'omittitles') and
+                            not(name() = 'renderas') and
+                            not(name() = 'resourceref')]"/>
 
     <xsl:call-template name="merge.info">
       <xsl:with-param name="merge.element" select="$module/d:merge"/>
@@ -429,19 +431,16 @@
           <!-- must use for-each to set context node for xsl:copy -->
           <xsl:for-each select="$ref.content">
             <xsl:copy>
-              <xsl:copy-of select="@*[not(name() = 'xml:id')][not(name() = 'xml:base')]"/>
-              <xsl:choose>
-                <!-- Use the module's xml:id if it has one -->
-                <xsl:when test="$module/@xml:id">
-                  <xsl:attribute name="xml:id">
-                    <xsl:value-of select="$module/@xml:id"/>
-                  </xsl:attribute>
-                </xsl:when>
-                <!-- otherwise use the resource's id -->
-                <xsl:otherwise>
-                  <xsl:copy-of select="@xml:id"/>
-                </xsl:otherwise>
-              </xsl:choose>
+              <!-- copy attributes from resource to output -->
+              <xsl:copy-of select="@*"/>
+              <!-- override resource attributes with common attributes from module -->
+              <xsl:copy-of select="$module/@*[not(name() = 'chunk') and
+                                              not(name() = 'defaultformat') and
+                                              not(name() = 'contentonly') and
+                                              not(name() = 'omittitles') and
+                                              not(name() = 'renderas') and
+                                              not(name() = 'resourceref') and
+                                              not(name() = 'type')]"/>
 
               <xsl:attribute name="xml:base">
                 <xsl:choose>
@@ -480,21 +479,16 @@
         <xsl:otherwise>
           <!-- create the element instead of copying it -->
           <xsl:element name="{$element.name}" namespace="http://docbook.org/ns/docbook">
-            <xsl:copy-of select="$ref.content/@*[not(name() = 'xml:id')][not(name() = 'xml:base')]"/>
-            <xsl:choose>
-              <!-- Use the module's xml:id if it has one -->
-              <xsl:when test="@xml:id">
-                <xsl:attribute name="xml:id">
-                  <xsl:value-of select="@xml:id"/>
-                </xsl:attribute>
-              </xsl:when>
-              <!-- otherwise use the resource's id -->
-              <xsl:when test="$ref.content/@xml:id">
-                <xsl:attribute name="xml:id">
-                  <xsl:value-of select="$ref.content/@xml:id"/>
-                </xsl:attribute>
-              </xsl:when>
-            </xsl:choose>
+            <!-- copy attributes from resource to output -->
+            <xsl:copy-of select="$ref.content/@*"/>
+            <!-- override resource attributes with common attributes from module -->
+            <xsl:copy-of select="@*[not(name() = 'chunk') and
+                                    not(name() = 'defaultformat') and
+                                    not(name() = 'contentonly') and
+                                    not(name() = 'omittitles') and
+                                    not(name() = 'renderas') and
+                                    not(name() = 'resourceref') and
+                                    not(name() = 'type')]"/>
 
             <xsl:attribute name="xml:base">
               <xsl:choose>

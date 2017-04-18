@@ -5,8 +5,8 @@
   xmlns:exsl="http://exslt.org/common"
   xmlns:xlink="http://www.w3.org/1999/xlink"
   xmlns="http://docbook.org/ns/docbook"
-                xmlns:saxon="http://icl.com/saxon"
-                xmlns:NodeInfo="http://org.apache.xalan.lib.NodeInfo"
+  xmlns:saxon="http://icl.com/saxon"
+  xmlns:NodeInfo="http://org.apache.xalan.lib.NodeInfo"
   exclude-result-prefixes="exsl d xlink NodeInfo saxon"
   version="1.0">
 
@@ -15,7 +15,7 @@
 
 <xsl:key name="id" match="*" use="@id|@xml:id"/>
 
-
+<xsl:param name="system.id" select="'assembly://'"/>
 <xsl:param name="docbook.version">5.0</xsl:param>
 <xsl:param name="root.default.renderas">book</xsl:param>
 <xsl:param name="topic.default.renderas">section</xsl:param>
@@ -29,8 +29,14 @@
 <!-- default mode is to copy all content nodes -->
 <xsl:template match="node()|@*" priority="-5" mode="copycontent">
   <xsl:param name="omittitles"/>
+  <xsl:param name="xml.base"/>
     <xsl:copy>
       <xsl:apply-templates select="@*" mode="copycontent"/>
+      <xsl:if test="$xml.base">
+        <xsl:attribute name="xml:base">
+          <xsl:value-of select="$xml.base"/>
+        </xsl:attribute>
+      </xsl:if>
       <xsl:apply-templates mode="copycontent">
         <xsl:with-param name="omittitles" select="$omittitles"/>
       </xsl:apply-templates>
@@ -52,6 +58,7 @@
                    | /*/d:info"
               mode="copycontent">
   <xsl:param name="omittitles"/>
+  <xsl:param name="xml.base"/>
 
   <xsl:choose>
     <xsl:when test="$omittitles = 'yes' or $omittitles = 'true' or $omittitles = '1'">
@@ -60,6 +67,11 @@
     <xsl:otherwise>
       <xsl:copy>
         <xsl:apply-templates select="@*" mode="copycontent"/>
+        <xsl:if test="$xml.base">
+          <xsl:attribute name="xml:base">
+            <xsl:value-of select="$xml.base"/>
+          </xsl:attribute>
+        </xsl:if>
         <xsl:apply-templates mode="copycontent"/>
       </xsl:copy>
     </xsl:otherwise>
@@ -141,11 +153,13 @@
   </xsl:element>
 </xsl:template>
 
+<!-- TODO: Delete, not allowed in structure now -->
 <xsl:template match="d:glossary|d:bibliography|d:index|d:toc">
    <xsl:param name="parent" select="''"/>
   <xsl:apply-templates select="." mode="copycontent"/>
 </xsl:template>
 
+<!-- TODO: Delete, not allowed in structure now -->
 <xsl:template match="d:title|d:titleabbrev|d:subtitle">
    <xsl:param name="parent" select="''"/>
   <xsl:apply-templates select="." mode="copycontent"/>
@@ -418,12 +432,29 @@
         </xsl:call-template>
       </xsl:variable>
 
+      <xsl:variable name="xml.base">
+        <xsl:choose>
+          <!-- Use the module's xml:base if it has one -->
+          <xsl:when test="@xml:base">
+            <xsl:call-template name="relative-uri">
+              <xsl:with-param name="filename" select="@xml:base" />
+            </xsl:call-template>
+          </xsl:when>
+          <!-- otherwise use the resource's fileref -->
+          <xsl:otherwise>
+            <xsl:value-of select="$fileref"/>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:variable>
+
       <xsl:choose>
         <xsl:when test="$contentonly.property = 'true' or
                         $contentonly.property = 'yes' or
                         $contentonly.property = '1'">
+          <!-- TODO: xml:base for each root element -->
           <xsl:apply-templates select="$ref.content/node()" mode="copycontent">
             <xsl:with-param name="omittitles" select="$omittitles.property"/>
+            <xsl:with-param name="xml.base" select="$xml.base"/>
           </xsl:apply-templates>
         </xsl:when>
         <!-- use xsl:copy if using the ref element itself to get its namespaces -->
@@ -443,18 +474,7 @@
                                               not(name() = 'type')]"/>
 
               <xsl:attribute name="xml:base">
-                <xsl:choose>
-                  <!-- Use the module's xml:base if it has one -->
-                  <xsl:when test="$module/@xml:base">
-                    <xsl:call-template name="relative-uri">
-                      <xsl:with-param name="filename" select="@xml:base" />
-                    </xsl:call-template>
-                  </xsl:when>
-                  <!-- otherwise use the resource's fileref -->
-                  <xsl:otherwise>
-                    <xsl:value-of select="$fileref"/>
-                  </xsl:otherwise>
-                </xsl:choose>
+                <xsl:value-of select="$xml.base"/>
               </xsl:attribute>
 
               <xsl:call-template name="merge.info">
@@ -491,18 +511,7 @@
                                     not(name() = 'type')]"/>
 
             <xsl:attribute name="xml:base">
-              <xsl:choose>
-                <!-- Use the module's xml:base if it has one -->
-                <xsl:when test="@xml:base">
-                  <xsl:call-template name="relative-uri">
-                    <xsl:with-param name="filename" select="@xml:base" />
-                  </xsl:call-template>
-                </xsl:when>
-                <!-- otherwise use the resource's fileref -->
-                <xsl:otherwise>
-                  <xsl:value-of select="$fileref"/>
-                </xsl:otherwise>
-              </xsl:choose>
+              <xsl:value-of select="$xml.base"/>
             </xsl:attribute>
 
             <xsl:call-template name="merge.info">
@@ -650,18 +659,18 @@
             <!-- copy through -->
             <xsl:copy>
               <xsl:copy-of select="@*"/>
-                <xsl:attribute name="xml:base">
-                  <xsl:choose>
-                    <!-- Use the element's xml:base if it has one -->
-                    <xsl:when test="@xml:base">
-                      <xsl:value-of select="@xml:base"/>
-                    </xsl:when>
-                    <!-- otherwise use the merge resource's fileref -->
-                    <xsl:otherwise>
-                      <xsl:value-of select="$fileref"/>
-                    </xsl:otherwise>
-                  </xsl:choose>
-                </xsl:attribute>
+              <xsl:attribute name="xml:base">
+                <xsl:choose>
+                  <!-- Use the element's xml:base if it has one -->
+                  <xsl:when test="@xml:base">
+                    <xsl:value-of select="@xml:base"/>
+                  </xsl:when>
+                  <!-- otherwise use the merge resource's fileref -->
+                  <xsl:otherwise>
+                    <xsl:value-of select="$fileref"/>
+                  </xsl:otherwise>
+                </xsl:choose>
+              </xsl:attribute>
               <xsl:copy-of select="*|text()|processing-instruction()|comment()"/>
             </xsl:copy>
           </xsl:otherwise>
@@ -711,11 +720,39 @@
     </xsl:call-template>
   </xsl:variable>
 
-  <xsl:value-of select="$srcurl"/>
+  <xsl:variable name="absolute-base">
+    <xsl:choose>
+      <xsl:when test="contains($srcurl, ':')">
+        <!-- it has a uri scheme so it is an absolute uri -->
+        <xsl:value-of select="$srcurl"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <!-- it's a relative uri -->
+        <xsl:call-template name="strippath">
+          <xsl:with-param name="filename">
+            <xsl:call-template name="getdir">
+              <xsl:with-param name="filename">
+                <xsl:choose>
+                  <xsl:when test="function-available('saxon:systemId')">
+                    <xsl:value-of select="saxon:systemId()"/>
+                  </xsl:when>
+                  <xsl:when test="function-available('NodeInfo:systemId')">
+                    <xsl:value-of select="NodeInfo:systemId()"/>
+                  </xsl:when>
+                  <xsl:otherwise>
+                    <xsl:value-of select="$system.id"/>
+                  </xsl:otherwise>
+                </xsl:choose>
+              </xsl:with-param>
+            </xsl:call-template>
+            <xsl:value-of select="$srcurl"/>
+          </xsl:with-param>
+        </xsl:call-template>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:variable>
 
-<!-- trim.common.uri.paths in lib.xsl -->
-<!-- count.uri.path.depth in lib.xsl -->
-<!-- copy-string in lib.xsl -->
+  <xsl:value-of select="$absolute-base"/>
 
 </xsl:template>
 

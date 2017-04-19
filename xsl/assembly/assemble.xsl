@@ -15,7 +15,7 @@
 
 <xsl:key name="id" match="*" use="@id|@xml:id"/>
 
-<xsl:param name="system.id" select="'assembly://'"/>
+<xsl:param name="system.id" select="'assembly://assembly.xml'"/>
 <xsl:param name="docbook.version">5.0</xsl:param>
 <xsl:param name="root.default.renderas">book</xsl:param>
 <xsl:param name="topic.default.renderas">section</xsl:param>
@@ -433,18 +433,22 @@
       </xsl:variable>
 
       <xsl:variable name="xml.base">
-        <xsl:choose>
-          <!-- Use the module's xml:base if it has one -->
-          <xsl:when test="@xml:base">
-            <xsl:call-template name="relative-uri">
-              <xsl:with-param name="filename" select="@xml:base" />
-            </xsl:call-template>
-          </xsl:when>
-          <!-- otherwise use the resource's fileref -->
-          <xsl:otherwise>
-            <xsl:value-of select="$fileref"/>
-          </xsl:otherwise>
-        </xsl:choose>
+        <xsl:call-template name="absolute-uri">
+          <xsl:with-param name="srcurl">
+            <xsl:choose>
+              <!-- Use the module's xml:base if it has one -->
+              <xsl:when test="@xml:base">
+                <xsl:call-template name="relative-uri">
+                  <xsl:with-param name="filename" select="@xml:base" />
+                </xsl:call-template>
+              </xsl:when>
+              <!-- otherwise use the resource's fileref -->
+              <xsl:otherwise>
+                <xsl:value-of select="$fileref"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:with-param>
+        </xsl:call-template>
       </xsl:variable>
 
       <xsl:choose>
@@ -704,56 +708,51 @@
   </xsl:if>
 </xsl:template>
 
+<xsl:template name="absolute-uri">
+  <xsl:param name="srcurl"/>
+  <xsl:choose>
+    <xsl:when test="contains($srcurl, ':')">
+      <!-- it has a uri scheme so it is an absolute uri -->
+      <xsl:value-of select="$srcurl"/>
+    </xsl:when>
+    <xsl:otherwise>
+      <!-- it's a relative uri -->
+      <xsl:call-template name="strippath">
+        <xsl:with-param name="filename">
+          <xsl:call-template name="getdir">
+            <xsl:with-param name="filename">
+              <xsl:choose>
+                <xsl:when test="contains(system-property('xsl:vendor'), 'SAXON')">
+                  <xsl:value-of select="saxon:systemId()"/>
+                </xsl:when>
+                <xsl:when test="function-available('NodeInfo:systemId')">
+                  <xsl:value-of select="NodeInfo:systemId()"/>
+                </xsl:when>
+                <xsl:otherwise>
+                  <xsl:value-of select="$system.id"/>
+                </xsl:otherwise>
+              </xsl:choose>
+            </xsl:with-param>
+          </xsl:call-template>
+          <xsl:value-of select="$srcurl"/>
+        </xsl:with-param>
+      </xsl:call-template>
+    </xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
 <xsl:template name="relative-uri">
   <xsl:param name="filename" select="."/>
-
-  <xsl:variable name="srcurl">
-    <xsl:call-template name="strippath">
-      <xsl:with-param name="filename">
-        <xsl:call-template name="xml.base.dirs">
-          <xsl:with-param name="base.elem"
-                          select="$filename/ancestor-or-self::*
-                                   [@xml:base != ''][1]"/>
-        </xsl:call-template>
-        <xsl:value-of select="$filename"/>
-      </xsl:with-param>
-    </xsl:call-template>
-  </xsl:variable>
-
-  <xsl:variable name="absolute-base">
-    <xsl:choose>
-      <xsl:when test="contains($srcurl, ':')">
-        <!-- it has a uri scheme so it is an absolute uri -->
-        <xsl:value-of select="$srcurl"/>
-      </xsl:when>
-      <xsl:otherwise>
-        <!-- it's a relative uri -->
-        <xsl:call-template name="strippath">
-          <xsl:with-param name="filename">
-            <xsl:call-template name="getdir">
-              <xsl:with-param name="filename">
-                <xsl:choose>
-                  <xsl:when test="function-available('saxon:systemId')">
-                    <xsl:value-of select="saxon:systemId()"/>
-                  </xsl:when>
-                  <xsl:when test="function-available('NodeInfo:systemId')">
-                    <xsl:value-of select="NodeInfo:systemId()"/>
-                  </xsl:when>
-                  <xsl:otherwise>
-                    <xsl:value-of select="$system.id"/>
-                  </xsl:otherwise>
-                </xsl:choose>
-              </xsl:with-param>
-            </xsl:call-template>
-            <xsl:value-of select="$srcurl"/>
-          </xsl:with-param>
-        </xsl:call-template>
-      </xsl:otherwise>
-    </xsl:choose>
-  </xsl:variable>
-
-  <xsl:value-of select="$absolute-base"/>
-
+  <xsl:call-template name="strippath">
+    <xsl:with-param name="filename">
+      <xsl:call-template name="xml.base.dirs">
+        <xsl:with-param name="base.elem"
+                        select="$filename/ancestor-or-self::*
+                                 [@xml:base != ''][1]"/>
+      </xsl:call-template>
+      <xsl:value-of select="$filename"/>
+    </xsl:with-param>
+  </xsl:call-template>
 </xsl:template>
 
 <xsl:template name="strippath">

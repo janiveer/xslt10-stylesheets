@@ -15,7 +15,6 @@
 
 <xsl:key name="id" match="*" use="@id|@xml:id"/>
 
-<xsl:param name="system.id" select="'assembly://assembly.xml'"/>
 <xsl:param name="docbook.version">5.0</xsl:param>
 <xsl:param name="root.default.renderas">book</xsl:param>
 <xsl:param name="topic.default.renderas">section</xsl:param>
@@ -24,7 +23,8 @@
 <xsl:param name="output.format" select="''"/>
 <!-- May be used to select one structure among several to  process -->
 <xsl:param name="structure.id" select="''"/>
-
+<!-- Default system id. Overridden by function or by parameter -->
+<xsl:param name="system.id" select="'assembly://assembly.xml'"/>
 
 <!-- default mode is to copy all content nodes -->
 <xsl:template match="node()|@*" priority="-5" mode="copycontent">
@@ -433,6 +433,9 @@
       </xsl:variable>
 
       <xsl:variable name="xml.base">
+        <!-- Make xml:base always absolute. Otherwise, the xml:base of
+             a child element may be incorrectly resolved against the
+             xml:base of an ancestor element. -->
         <xsl:call-template name="absolute-uri">
           <xsl:with-param name="srcurl">
             <xsl:choose>
@@ -709,6 +712,7 @@
 </xsl:template>
 
 <xsl:template name="absolute-uri">
+  <!-- Makes a uri absolute using the document's system id -->
   <xsl:param name="srcurl"/>
   <xsl:choose>
     <xsl:when test="contains($srcurl, ':')">
@@ -720,6 +724,7 @@
       <xsl:call-template name="strippath">
         <xsl:with-param name="filename">
           <xsl:call-template name="getdir">
+            <!-- get system id from function, or if that fails, from parameter -->
             <xsl:with-param name="filename">
               <xsl:choose>
                 <xsl:when test="contains(system-property('xsl:vendor'), 'SAXON')">
